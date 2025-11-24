@@ -9,7 +9,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className={`flex flex-col items-center py-6 bg-gray-900/50 border-r border-white/5 backdrop-blur-sm z-10 transition-all duration-300 ${isExpanded ? 'w-48' : 'w-16 lg:w-20'}`}>
+        <div className={`flex flex-col items-center py-6 bg-white border-r border-slate-200 z-10 transition-all duration-300 ${isExpanded ? 'w-48' : 'w-16 lg:w-20'}`}>
             <div className="mb-8">
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -20,7 +20,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
             
             <nav className="flex-1 flex flex-col gap-4 w-full px-2">
                 <NavItem active={currentView === 'dashboard'} icon={<HomeIcon />} label="Dashboard" expanded={isExpanded} onClick={() => onViewChange('dashboard')} />
-                <NavItem icon={<MapIcon />} label="Map View" expanded={isExpanded} onClick={() => onViewChange('dashboard')} />
                 <NavItem icon={<ChartIcon />} label="Analytics" expanded={isExpanded} onClick={() => onViewChange('analytics')} />
                 <NavItem icon={<AlertIcon />} label="Alerts" expanded={isExpanded} onClick={() => onViewChange('alerts')} />
                 <NavItem icon={<ReportIcon />} label="Reports" expanded={isExpanded} onClick={() => onViewChange('reports')} />
@@ -28,7 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
             </nav>
 
             <div className="mt-auto">
-                <button onClick={() => setIsExpanded(!isExpanded)} className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-bold text-gray-400 hover:bg-gray-700 transition-colors">
+                <button onClick={() => setIsExpanded(!isExpanded)} className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-400 hover:bg-slate-200 transition-colors">
                     {isExpanded ? '←' : '→'}
                 </button>
             </div>
@@ -37,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
 };
 
 const NavItem = ({ active, icon, label, expanded, onClick }: { active?: boolean; icon: React.ReactNode; label: string; expanded: boolean; onClick?: () => void }) => (
-    <button onClick={onClick} className={`w-full aspect-square lg:aspect-auto lg:h-12 rounded-xl flex items-center justify-center lg:justify-start lg:px-4 transition-all duration-300 ${active ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
+    <button onClick={onClick} className={`w-full aspect-square lg:aspect-auto lg:h-12 rounded-xl flex items-center justify-center lg:justify-start lg:px-4 transition-all duration-300 ${active ? 'bg-cyan-50 text-cyan-600 shadow-sm border border-cyan-100' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}>
         {icon}
         {expanded && <span className="ml-3 text-sm font-medium">{label}</span>}
     </button>

@@ -9,6 +9,7 @@ from models import Incident, PatrolUnit
 from agents.sentinel import generate_raw_report
 from agents.analyst import analyze_report
 from agents.commander import Commander
+from agents.hotspot_manager import HotspotManager
 
 app = FastAPI()
 
@@ -23,6 +24,7 @@ app.add_middleware(
 
 # State
 commander = Commander()
+hotspot_manager = HotspotManager()
 incidents: Dict[str, Incident] = {}
 system_logs: List[str] = []
 
@@ -61,6 +63,12 @@ async def simulation_loop():
                     timestamp=datetime.now(),
                     source=raw_data["source"]
                 )
+                
+                # Log Bias Warnings if any
+                if "bias_check" in analysis and analysis["bias_check"]["warnings"]:
+                    for warning in analysis["bias_check"]["warnings"]:
+                        log(f"⚖️ BIAS ALERT: {warning}")
+
                 incidents[incident.id] = incident
                 log(f"⚠️ New Incident: {incident.type} at {incident.location}")
                 
@@ -95,46 +103,9 @@ def get_units():
 def get_logs():
     return system_logs
 
-@app.post("/api/dispatch")
-def dispatch_all_units():
-    """Dispatch all available units to active incidents"""
-    active_incidents = [inc for inc in incidents.values() if inc.status != "Resolved"]
-    dispatched_count = 0
-    
-    for incident in active_incidents:
-        if incident.status == "Active":
-            unit = commander.assign_unit(incident)
-            if unit:
-                incident.status = "Assigned"
-                dispatched_count += 1
-                log(f"🚨 EMERGENCY: Dispatched {unit.name} to {incident.location}")
-    
-    return {"message": f"Dispatched {dispatched_count} units to active incidents"}
+@app.get("/api/hotspots")
+def get_hotspots():
+    return hotspot_manager.get_predictive_hotspots()
 
-@app.post("/api/emergency")
-def emergency_response():
-    """Activate emergency response protocol"""
-    log("🚨 EMERGENCY PROTOCOL ACTIVATED")
-    log("🔴 All units placed on high alert")
-    log("📡 Emergency communication channels opened")
-    
-    # Mark all incidents as high priority
-    for incident in incidents.values():
-        if incident.status == "Active":
-            incident.severity = "Critical"
-    
-    return {"message": "Emergency protocol activated", "status": "critical"}
-
-@app.post("/api/map/zoom/{location}")
-def zoom_to_location(location: str):
-    """Get coordinates for map zoom locations"""
-    locations = {
-        "cbd": {"lat": -1.2834, "lng": 36.8235, "zoom": 15},
-        "westlands": {"lat": -1.2635, "lng": 36.8024, "zoom": 15},
-        "karen": {"lat": -1.3200, "lng": 36.7050, "zoom": 14},
-        "kibera": {"lat": -1.3120, "lng": 36.7890, "zoom": 15}
-    }
-    
-    if location.lower() in locations:
-        return locations[location.lower()]
-    return {"error": "Location not found"}
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

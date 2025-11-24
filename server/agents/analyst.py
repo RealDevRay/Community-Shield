@@ -65,7 +65,13 @@ def analyze_report(raw_text: str):
         )
         
         result = chat_completion.choices[0].message.content
-        return json.loads(result)
+        analysis = json.loads(result)
+        
+        # Apply Ethical AI Check
+        from agents.bias_guard import BiasGuard
+        analysis = BiasGuard.check(analysis)
+        
+        return analysis
     except Exception as e:
         print(f"Analyst Error: {e}")
         # Fallback for demo if API fails

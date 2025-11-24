@@ -36,6 +36,24 @@ class Commander:
             nearest_unit.status = "EnRoute"
             nearest_unit.current_incident_id = incident.id
             incident.status = "Assigned"
+            
+            # Simulate a route (Start -> Midpoint -> End) for visualization
+            # In a real app, this would come from OSRM/Google Maps
+            mid_lat = (nearest_unit.lat + incident.lat) / 2
+            mid_lng = (nearest_unit.lng + incident.lng) / 2
+            
+            # Add a slight curve to the route
+            mid_lat += 0.001 
+            
+            route = [
+                [nearest_unit.lat, nearest_unit.lng],
+                [mid_lat, mid_lng],
+                [incident.lat, incident.lng]
+            ]
+            
+            # Attach route to unit (dynamically for MVP visualization)
+            nearest_unit.current_route = route
+            
             return nearest_unit
         
         return None

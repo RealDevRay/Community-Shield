@@ -4,6 +4,9 @@ import Map from './components/Map';
 import LiveFeed from './components/LiveFeed';
 import Stats from './components/Stats';
 import Sidebar from './components/Sidebar';
+import AnalyticsView from './components/AnalyticsView';
+import ReportsView from './components/ReportsView';
+import AlertsView from './components/AlertsView';
 
 // Types
 interface Incident {
@@ -31,6 +34,13 @@ function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'analytics' | 'reports' | 'alerts' | 'settings'>('dashboard');
   const [zoomTarget, setZoomTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const fetchData = async () => {
     try {
       const [incidentsRes, unitsRes, logsRes] = await Promise.all([
@@ -50,17 +60,18 @@ function App() {
   const dispatchAllUnits = async () => {
     try {
       await axios.post('http://localhost:8000/api/dispatch');
-      // Refresh data after dispatch
+      showToast('All units dispatched to nearest incidents', 'success');
       fetchData();
     } catch (error) {
       console.error("Error dispatching units:", error);
+      showToast('Failed to dispatch units', 'error');
     }
   };
 
   const activateEmergency = async () => {
     try {
       await axios.post('http://localhost:8000/api/emergency');
-      // Refresh data after emergency activation
+      showToast('EMERGENCY PROTOCOL ACTIVATED', 'error');
       fetchData();
     } catch (error) {
       console.error("Error activating emergency:", error);
@@ -84,40 +95,45 @@ function App() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white font-sans selection:bg-cyan-500 selection:text-black overflow-hidden">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-cyan-200 selection:text-cyan-900 overflow-hidden">
       <Sidebar currentView={currentView} onViewChange={setCurrentView} />
       
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Background Effects */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
-            <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[100px]"></div>
-            <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[100px]"></div>
-        </div>
+        {/* Toast Notification */}
+        {toast && (
+            <div className={`absolute top-6 left-1/2 transform -translate-x-1/2 z-[1000] px-6 py-3 rounded-full shadow-xl font-bold text-sm animate-bounce ${
+                toast.type === 'success' ? 'bg-green-500 text-white' :
+                toast.type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`}>
+                {toast.message}
+            </div>
+        )}
 
         {/* Header */}
-        <header className="relative z-10 px-8 py-6 flex justify-between items-end border-b border-white/5 bg-gray-900/30 backdrop-blur-sm">
+        <header className="relative z-10 px-8 py-5 flex justify-between items-center bg-white border-b border-slate-200 shadow-sm">
           <div>
-            <h1 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 drop-shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-              COMMUNITY SHIELD
+            <h1 className="text-2xl font-black tracking-tighter text-slate-900 flex items-center gap-2">
+              <span className="bg-gradient-to-r from-cyan-500 to-blue-600 text-transparent bg-clip-text">COMMUNITY SHIELD</span>
             </h1>
-            <div className="flex items-center gap-3 mt-1">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 tracking-widest">
+            <div className="flex items-center gap-3">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-700 border border-cyan-200 tracking-widest">
                     AI-POWERED
                 </span>
-                <p className="text-gray-500 text-sm tracking-widest uppercase">Predictive Policing System</p>
+                <p className="text-slate-500 text-xs tracking-widest uppercase">Predictive Policing System</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right hidden md:block">
-                <div className="text-xs text-gray-500 font-mono mb-1">SYSTEM STATUS</div>
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-bold animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.2)]">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2 shadow-[0_0_5px_#22c55e]"></span>
+                <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">System Status</div>
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 border border-green-200 text-green-700 text-xs font-bold">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
                     OPERATIONAL
                 </div>
             </div>
             <div className="text-right hidden md:block">
-                <div className="text-xs text-gray-500 font-mono mb-1">CURRENT TIME</div>
-                <div className="text-xl font-mono font-bold text-gray-200">
+                <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Current Time</div>
+                <div className="text-xl font-mono font-bold text-slate-700">
                     {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
             </div>
@@ -125,208 +141,111 @@ function App() {
         </header>
 
         {/* Main Content */}
-        <main className="relative z-10 flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+        <main className="relative z-10 flex-1 p-6 overflow-hidden bg-slate-50">
           
-          {/* Left Panel: Stats & Logs */}
-          <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
-            {currentView === 'dashboard' && (
-              <>
-                <Stats incidentCount={incidents.length} unitCount={units.filter(u => u.status !== 'Idle').length} />
-                
-                <div className="flex-1 min-h-0">
-                  <LiveFeed logs={logs} />
-                </div>
-
-                {/* Enhanced Control Panel */}
-                <div className="glass-panel p-4 rounded-xl">
-                    <h3 className="text-cyan-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></span>
-                        Command Center
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                        <button 
-                          onClick={dispatchAllUnits}
-                          className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold py-2 rounded transition-all hover:shadow-[0_0_10px_rgba(6,182,212,0.3)]"
-                        >
-                            DISPATCH ALL
-                        </button>
-                        <button 
-                          onClick={activateEmergency}
-                          className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold py-2 rounded transition-all hover:shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-                        >
-                            EMERGENCY
-                        </button>
-                    </div>
-                    <div className="space-y-2 text-xs">
-                        <div className="flex justify-between">
-                            <span className="text-gray-400">AI Confidence:</span>
-                            <span className="text-green-400 font-bold">94%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-400">Response Time:</span>
-                            <span className="text-blue-400 font-bold">2.3s</span>
-                        </div>
-                    </div>
-                </div>
-              </>
-            )}
-
-            {currentView === 'analytics' && (
-              <div className="glass-panel p-6 rounded-xl h-full">
-                <h3 className="text-cyan-400 text-lg font-bold uppercase tracking-wider mb-4">Analytics Dashboard</h3>
-                <div className="space-y-4">
-                  <div className="text-center text-gray-400 py-8">
-                    <ChartIcon />
-                    <p className="mt-2">Advanced analytics and reporting coming soon...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentView === 'reports' && (
-              <div className="glass-panel p-6 rounded-xl h-full">
-                <h3 className="text-cyan-400 text-lg font-bold uppercase tracking-wider mb-4">Incident Reports</h3>
-                <div className="space-y-4">
-                  <div className="text-center text-gray-400 py-8">
-                    <ReportIcon />
-                    <p className="mt-2">Detailed incident reports and export functionality coming soon...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentView === 'alerts' && (
-              <div className="glass-panel p-6 rounded-xl h-full">
-                <h3 className="text-red-400 text-lg font-bold uppercase tracking-wider mb-4">Active Alerts</h3>
-                <div className="space-y-4">
-                  <div className="text-center text-gray-400 py-8">
-                    <AlertIcon />
-                    <p className="mt-2">Real-time alert management system coming soon...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentView === 'settings' && (
-              <div className="glass-panel p-6 rounded-xl h-full">
-                <h3 className="text-cyan-400 text-lg font-bold uppercase tracking-wider mb-4">System Settings</h3>
-                <div className="space-y-4">
-                  <div className="text-center text-gray-400 py-8">
-                    <SettingsIcon />
-                    <p className="mt-2">System configuration and preferences coming soon...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Panel: Map (only show on dashboard) */}
+          {/* Dashboard Layout: Split View */}
           {currentView === 'dashboard' && (
-            <div className="lg:col-span-8 xl:col-span-9 h-full rounded-2xl overflow-hidden border border-cyan-500/20 shadow-[0_0_30px_rgba(6,182,212,0.1)] relative group">
-              <div className="absolute inset-0 pointer-events-none z-20 border-[1px] border-cyan-500/10 rounded-2xl"></div>
-              {/* Corner Accents */}
-              <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-500/50 rounded-tl-2xl z-20"></div>
-              <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-500/50 rounded-tr-2xl z-20"></div>
-              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-cyan-500/50 rounded-bl-2xl z-20"></div>
-              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-cyan-500/50 rounded-br-2xl z-20"></div>
-              
-              <Map incidents={incidents} units={units} zoomTarget={zoomTarget} />
-              
-              {/* Enhanced Map Overlay UI */}
-              <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
-                  <div className="bg-gray-900/90 backdrop-blur text-xs text-gray-300 px-3 py-2 rounded-lg border border-white/10 shadow-lg">
-                      <div className="text-cyan-400 font-bold text-[10px] uppercase tracking-wider mb-1">Current View</div>
-                      <div><span className="text-cyan-400 font-bold">LAT:</span> -1.2921</div>
-                      <div><span className="text-cyan-400 font-bold">LNG:</span> 36.8219</div>
-                  </div>
-                  <div className="bg-gray-900/90 backdrop-blur p-2 rounded-lg border border-white/10 shadow-lg">
-                      <div className="text-cyan-400 text-[10px] font-bold uppercase tracking-wider mb-2">Quick Zoom</div>
-                      <div className="grid grid-cols-2 gap-1">
-                          <button 
-                            onClick={() => zoomToLocation('cbd')}
-                            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-[10px] font-bold py-1 px-2 rounded transition-colors"
-                          >
-                            CBD
-                          </button>
-                          <button 
-                            onClick={() => zoomToLocation('westlands')}
-                            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-[10px] font-bold py-1 px-2 rounded transition-colors"
-                          >
-                            Westlands
-                          </button>
-                          <button 
-                            onClick={() => zoomToLocation('karen')}
-                            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-[10px] font-bold py-1 px-2 rounded transition-colors"
-                          >
-                            Karen
-                          </button>
-                          <button 
-                            onClick={() => zoomToLocation('kibera')}
-                            className="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 text-[10px] font-bold py-1 px-2 rounded transition-colors"
-                          >
-                            Kibera
-                          </button>
-                      </div>
-                  </div>
-              </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+                {/* Left Panel: Stats & Controls */}
+                <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
+                    <Stats incidentCount={incidents.length} unitCount={units.filter(u => u.status !== 'Idle').length} />
+                    
+                    <div className="flex-1 min-h-0">
+                        <LiveFeed logs={logs} />
+                    </div>
 
-              {/* Enhanced Map Legend */}
-              <div className="absolute bottom-4 left-4 z-[400] bg-gray-900/90 backdrop-blur p-4 rounded-lg border border-white/10 shadow-lg">
-                  <h4 className="text-cyan-400 text-sm font-bold uppercase tracking-wider mb-3">Map Legend</h4>
-                  <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-3">
-                          <div className="w-4 h-4 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.5)]"></div>
-                          <span className="text-gray-300">Active Incidents</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                          <div className="w-4 h-4 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                          <span className="text-gray-300">Police Units</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                          <div className="w-4 h-4 bg-orange-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)] animate-pulse"></div>
-                          <span className="text-gray-300">Predicted Hotspots</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                          <div className="w-4 h-4 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                          <span className="text-gray-300">Safe Zones</span>
-                      </div>
-                  </div>
-              </div>
+                    {/* Control Panel */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                            Command Center
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            <button 
+                                onClick={dispatchAllUnits}
+                                className="bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 text-xs font-bold py-3 rounded transition-all hover:shadow-md active:scale-95"
+                            >
+                                DISPATCH ALL
+                            </button>
+                            <button 
+                                onClick={activateEmergency}
+                                className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold py-3 rounded transition-all hover:shadow-md active:scale-95"
+                            >
+                                EMERGENCY
+                            </button>
+                        </div>
+                        <div className="space-y-2 text-xs border-t border-slate-100 pt-3">
+                            <div className="flex justify-between">
+                                <span className="text-slate-400">AI Confidence:</span>
+                                <span className="text-green-600 font-bold">94%</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-400">Response Time:</span>
+                                <span className="text-blue-600 font-bold">2.3s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-              {/* Predictive Analytics Overlay */}
-              <div className="absolute top-4 left-4 z-[400] bg-gray-900/90 backdrop-blur p-4 rounded-lg border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.2)] max-w-xs">
-                  <h4 className="text-cyan-400 text-sm font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse"></span>
-                      AI Predictions
-                  </h4>
-                  <div className="space-y-3 text-sm">
-                      <div className="bg-red-500/10 border border-red-500/20 p-2 rounded">
-                          <div className="text-red-400 font-bold text-xs">HIGH RISK</div>
-                          <div className="text-gray-300 text-xs">Westlands Mall - 78% probability</div>
-                          <div className="text-gray-500 text-[10px] mt-1">Next 2 hours</div>
-                      </div>
-                      <div className="bg-orange-500/10 border border-orange-500/20 p-2 rounded">
-                          <div className="text-orange-400 font-bold text-xs">MEDIUM RISK</div>
-                          <div className="text-gray-300 text-xs">CBD Area - 45% probability</div>
-                          <div className="text-gray-500 text-[10px] mt-1">Next 4 hours</div>
-                      </div>
-                      <div className="bg-green-500/10 border border-green-500/20 p-2 rounded">
-                          <div className="text-green-400 font-bold text-xs">LOW RISK</div>
-                          <div className="text-gray-300 text-xs">Karen Suburbs - 12% probability</div>
-                          <div className="text-gray-500 text-[10px] mt-1">Next 6 hours</div>
-                      </div>
-                  </div>
-              </div>
+                {/* Right Panel: Map */}
+                <div className="lg:col-span-8 xl:col-span-9 h-full rounded-2xl overflow-hidden border border-slate-200 shadow-lg relative group bg-white">
+                    <Map incidents={incidents} units={units} zoomTarget={zoomTarget} />
+                    
+                    {/* Map Overlays */}
+                    <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
+                        <div className="bg-white/90 backdrop-blur p-2 rounded-lg border border-slate-200 shadow-lg">
+                            <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">Quick Zoom</div>
+                            <div className="grid grid-cols-2 gap-1">
+                                {['CBD', 'Westlands', 'Karen', 'Kibera'].map(loc => (
+                                    <button 
+                                        key={loc}
+                                        onClick={() => zoomToLocation(loc.toLowerCase())}
+                                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold py-1 px-2 rounded transition-colors"
+                                    >
+                                        {loc}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 z-[400] bg-white/90 backdrop-blur p-4 rounded-lg border border-slate-200 shadow-lg">
+                        <h4 className="text-slate-800 text-xs font-bold uppercase tracking-wider mb-3">Legend</h4>
+                        <div className="space-y-2 text-xs">
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full"></div><span className="text-slate-600">Incident</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-500 rounded-full"></div><span className="text-slate-600">Patrol Unit</span></div>
+                            <div className="flex items-center gap-2"><div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div><span className="text-slate-600">Hotspot</span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
           )}
 
-          {/* Placeholder for other views */}
-          {currentView !== 'dashboard' && (
-            <div className="lg:col-span-8 xl:col-span-9 flex items-center justify-center">
-              <div className="text-center text-gray-400">
-                <h2 className="text-2xl font-bold mb-4 capitalize">{currentView} View</h2>
-                <p>This section is under development. Check back soon!</p>
-              </div>
+          {/* Full Width Views */}
+          {currentView === 'analytics' && (
+            <div className="h-full w-full overflow-y-auto">
+                <AnalyticsView />
+            </div>
+          )}
+
+          {currentView === 'reports' && (
+            <div className="h-full w-full overflow-y-auto">
+                <ReportsView />
+            </div>
+          )}
+
+          {currentView === 'alerts' && (
+            <div className="h-full w-full overflow-y-auto">
+                <AlertsView />
+            </div>
+          )}
+
+          {currentView === 'settings' && (
+            <div className="h-full w-full flex items-center justify-center bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div className="text-center text-slate-400">
+                    <SettingsIcon />
+                    <p className="mt-4 font-medium">System Settings</p>
+                    <p className="text-sm">Configuration panel coming soon.</p>
+                </div>
             </div>
           )}
 
