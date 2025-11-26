@@ -13,6 +13,7 @@ from agents.sentinel import generate_raw_report
 from agents.analyst import analyze_report
 from agents.commander import Commander
 from agents.hotspot_manager import HotspotManager
+from twitter_monitor import monitor_twitter
 
 load_dotenv()
 
@@ -47,6 +48,31 @@ def log(message: str, log_type: str = "info", incident_id: str = None, unit_id: 
         }).execute()
     except Exception as e:
         print(f"Error logging to Supabase: {e}")
+
+# Twitter monitoring task
+twitter_task = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on app startup"""
+    global twitter_task
+    
+    # Start Twitter monitoring in background
+    print("🚀 Starting Twitter monitoring service...")
+    twitter_task = asyncio.create_task(start_twitter_monitoring_loop())
+    
+    log("🐦 Twitter monitoring service started", "system")
+
+async def start_twitter_monitoring_loop():
+    """Run Twitter monitoring every 30 minutes"""
+    while True:
+        try:
+            await monitor_twitter()
+        except Exception as e:
+            print(f"Error in Twitter monitoring: {e}")
+        
+        # Wait 30 minutes
+        await asyncio.sleep(1800)
 
 async def simulation_loop():
     """Background task that simulates the agent loop."""
@@ -227,10 +253,10 @@ def dispatch_all():
     return {"message": "All units dispatched", "count": len(result.data)}
 
 @app.post("/api/emergency")
-def emergency_protocol():
+def activate_emergency():
     """Activate emergency protocol"""
-    log("🚨 EMERGENCY PROTOCOL ACTIVATED!", log_type="dispatch")
-    return {"message": "Emergency protocol activated"}
+    log("🚨 EMERGENCY PROTOCOL ACTIVATED", "emergency")
+    return {"status": "emergency_activated"}
 
 @app.post("/api/map/zoom/{location}")
 def zoom_to_location(location: str):
@@ -245,6 +271,15 @@ def zoom_to_location(location: str):
     if location.lower() in locations:
         return locations[location.lower()]
     return {"error": "Location not found"}
+
+@app.post("/api/test-twitter")
+async def test_twitter():
+    """Test Twitter integration manually"""
+    try:
+        await monitor_twitter()
+        return {"status": "success", "message": "Twitter monitoring executed successfully"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
