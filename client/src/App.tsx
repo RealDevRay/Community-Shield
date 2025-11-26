@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Map from './components/Map';
-import LiveFeed from './components/LiveFeed';
-import Stats from './components/Stats';
+import toast from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
+import Map from './components/Map';
+import Stats from './components/Stats';
+import LiveFeedTicker from './components/LiveFeedTicker';
 import AnalyticsView from './components/AnalyticsView';
 import ReportsView from './components/ReportsView';
 import AlertsView from './components/AlertsView';
+import SettingsView from './components/SettingsView';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 // Types
 interface Incident {
@@ -34,13 +37,6 @@ function App() {
   const [currentView, setCurrentView] = useState<'dashboard' | 'analytics' | 'reports' | 'alerts' | 'settings'>('dashboard');
   const [zoomTarget, setZoomTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
 
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const fetchData = async () => {
     try {
       const [incidentsRes, unitsRes, logsRes] = await Promise.all([
@@ -60,18 +56,26 @@ function App() {
   const dispatchAllUnits = async () => {
     try {
       await axios.post('http://localhost:8000/api/dispatch');
-      showToast('All units dispatched to nearest incidents', 'success');
+      toast.success('🚔 All units dispatched to nearest incidents!');
       fetchData();
     } catch (error) {
       console.error("Error dispatching units:", error);
-      showToast('Failed to dispatch units', 'error');
+      toast.error('❌ Failed to dispatch units');
     }
   };
 
   const activateEmergency = async () => {
     try {
       await axios.post('http://localhost:8000/api/emergency');
-      showToast('EMERGENCY PROTOCOL ACTIVATED', 'error');
+      toast.error('🚨 EMERGENCY PROTOCOL ACTIVATED!', {
+        duration: 5000,
+        style: {
+          background: '#dc2626',
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: '16px',
+        },
+      });
       fetchData();
     } catch (error) {
       console.error("Error activating emergency:", error);
@@ -89,6 +93,17 @@ function App() {
     }
   };
 
+  // Keyboard shortcuts (after function definitions)
+  useKeyboardShortcuts([
+    { key: 'd', action: dispatchAllUnits, description: 'Dispatch all units' },
+    { key: 'e', action: activateEmergency, description: 'Emergency protocol' },
+    { key: '1', action: () => setCurrentView('dashboard'), description: 'Go to Dashboard' },
+    { key: '2', action: () => setCurrentView('analytics'), description: 'Go to Analytics' },
+    { key: '3', action: () => setCurrentView('reports'), description: 'Go to Reports' },
+    { key: '4', action: () => setCurrentView('alerts'), description: 'Go to Alerts' },
+    { key: '5', action: () => setCurrentView('settings'), description: 'Go to Settings' },
+  ]);
+
   useEffect(() => {
     const interval = setInterval(fetchData, 1000);
     return () => clearInterval(interval);
@@ -99,17 +114,6 @@ function App() {
       <Sidebar currentView={currentView} onViewChange={setCurrentView} />
       
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Toast Notification */}
-        {toast && (
-            <div className={`absolute top-6 left-1/2 transform -translate-x-1/2 z-[1000] px-6 py-3 rounded-full shadow-xl font-bold text-sm animate-bounce ${
-                toast.type === 'success' ? 'bg-green-500 text-white' :
-                toast.type === 'error' ? 'bg-red-500 text-white' :
-                'bg-blue-500 text-white'
-            }`}>
-                {toast.message}
-            </div>
-        )}
-
         {/* Header */}
         <header className="relative z-10 px-8 py-5 flex justify-between items-center bg-white border-b border-slate-200 shadow-sm">
           <div>
@@ -141,39 +145,46 @@ function App() {
         </header>
 
         {/* Main Content */}
-        <main className="relative z-10 flex-1 p-6 overflow-hidden bg-slate-50">
+        <main className="relative z-10 flex-1 flex flex-col overflow-hidden bg-slate-50">
           
+          {/* Live Feed Ticker - Only on Dashboard */}
+          {currentView === 'dashboard' && <LiveFeedTicker logs={logs} />}
+          
+          <div className="flex-1 p-6 overflow-hidden">
           {/* Dashboard Layout: Split View */}
           {currentView === 'dashboard' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-                {/* Left Panel: Stats & Controls */}
-                <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-6 h-full overflow-hidden">
-                    <Stats incidentCount={incidents.length} unitCount={units.filter(u => u.status !== 'Idle').length} />
-                    
-                    <div className="flex-1 min-h-0">
-                        <LiveFeed logs={logs} />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
+                {/* Left Panel: Stats & Controls - Scrollable */}
+                <div className="lg:col-span-4 xl:col-span-3 h-full flex flex-col gap-4 overflow-y-auto pr-2">
+                    {/* Stats - Top */}
+                    <div className="flex-shrink-0">
+                        <Stats incidentCount={incidents.length} unitCount={units.filter(u => u.status !== 'Idle').length} />
                     </div>
 
-                    {/* Control Panel */}
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    {/* Control Panel - Bottom */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
                         <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                            Command Center
+                            ⚡ Command Center
                         </h3>
                         <div className="grid grid-cols-2 gap-2 mb-3">
                             <button 
                                 onClick={dispatchAllUnits}
+                                title="Dispatch all idle units to nearest active incidents"
                                 className="bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 text-xs font-bold py-3 rounded transition-all hover:shadow-md active:scale-95"
                             >
-                                DISPATCH ALL
+                                🚔 DISPATCH ALL
                             </button>
                             <button 
                                 onClick={activateEmergency}
+                                title="Activate emergency protocol - alerts all units and command staff"
                                 className="bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold py-3 rounded transition-all hover:shadow-md active:scale-95"
                             >
-                                EMERGENCY
+                                🚨 EMERGENCY
                             </button>
                         </div>
+                        
                         <div className="space-y-2 text-xs border-t border-slate-100 pt-3">
+                            <h4 className="text-slate-400 font-bold uppercase tracking-wider mb-2">Hotspot Risk</h4>
                             <div className="flex justify-between">
                                 <span className="text-slate-400">AI Confidence:</span>
                                 <span className="text-green-600 font-bold">94%</span>
@@ -190,7 +201,7 @@ function App() {
                 <div className="lg:col-span-8 xl:col-span-9 h-full rounded-2xl overflow-hidden border border-slate-200 shadow-lg relative group bg-white">
                     <Map incidents={incidents} units={units} zoomTarget={zoomTarget} />
                     
-                    {/* Map Overlays */}
+                    {/* Map Overlays - Top Right */}
                     <div className="absolute top-4 right-4 z-[400] flex flex-col gap-2">
                         <div className="bg-white/90 backdrop-blur p-2 rounded-lg border border-slate-200 shadow-lg">
                             <div className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">Quick Zoom</div>
@@ -240,14 +251,11 @@ function App() {
           )}
 
           {currentView === 'settings' && (
-            <div className="h-full w-full flex items-center justify-center bg-white rounded-xl border border-slate-200 shadow-sm">
-                <div className="text-center text-slate-400">
-                    <SettingsIcon />
-                    <p className="mt-4 font-medium">System Settings</p>
-                    <p className="text-sm">Configuration panel coming soon.</p>
-                </div>
+            <div className="h-full w-full overflow-y-auto">
+                <SettingsView />
             </div>
           )}
+          </div>
 
         </main>
       </div>
