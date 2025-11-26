@@ -8,20 +8,24 @@
 
 - **Predictive Hotspot Analysis**: Analyzes historical crime reports, lighting infrastructure data, and social media sentiment to predict potential security incidents and identify high-risk areas.
 - **Optimized Patrol Routing**: Recommends real-time patrol routes based on predictive models and current resource availability.
-- **Bias Detection Module**: Implements ethical AI practices to detect and mitigate algorithmic bias in predictive models.
+- **Bias Detection Module**: Implements ethical AI practices using **Llama 3.3 70B** to detect and mitigate algorithmic bias in predictive models.
 - **Real-time Incident Monitoring**: Visualizes incidents on an interactive map as they are detected.
 - **Multi-Agent AI System**:
   - **Sentinel**: Continuously monitors and ingests raw data streams (simulated reports, social media, sensors).
-  - **Analyst**: Processes raw text using LLMs (Groq API) to extract structured data (location, severity, type).
+  - **Analyst**: Processes raw text using **Llama 3.3 70B** (Groq API) to extract structured data (location, severity, type).
   - **Commander**: Makes strategic decisions to assign the nearest available patrol units to confirmed incidents.
-- **Live Dashboard**: Displays system logs, active unit status, incident statistics, and predictive insights.
+- **Live Dashboard**:
+  - **Dashboard**: Real-time map, live logs, and unit status.
+  - **Analytics**: Crime trends, heatmaps, and response time analysis.
+  - **Reports**: Detailed daily incident logs with export functionality.
+  - **Alerts**: System-wide alerts and bias warnings.
 - **Resource Management**: Tracks patrol unit locations and availability in real-time.
 
 ## Architecture
 
 The system follows a modular architecture:
 
-1.  **Frontend**: Built with **React (Vite)** and **Tailwind CSS**. It provides a futuristic, responsive dashboard for command center operators.
+1.  **Frontend**: Built with **React (Vite)** and **Tailwind CSS**. It features a **Light Mode** premium design with responsive layouts for command center operators.
 2.  **Backend**: Powered by **FastAPI**. It orchestrates the AI agents and maintains the system state (incidents, units, logs).
 3.  **AI Agents**:
     - `Sentinel`: The eyes and ears. Generates/ingests raw reports.
@@ -32,7 +36,7 @@ The system follows a modular architecture:
 
 - **Frontend**: React, TypeScript, Tailwind CSS, Leaflet (Map)
 - **Backend**: Python, FastAPI, Uvicorn
-- **AI/ML**: Groq API (Llama 3 / Mixtral) for text analysis
+- **AI/ML**: Groq API (**Llama 3.3 70B Versatile**) for text analysis and bias detection
 - **State Management**: In-memory (Python dictionaries for MVP)
 
 ## Practical Integration Roadmap
