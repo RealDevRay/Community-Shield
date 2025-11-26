@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
@@ -10,6 +10,9 @@ import ReportsView from './components/ReportsView';
 import AlertsView from './components/AlertsView';
 import SettingsView from './components/SettingsView';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useRealtimeIncidents } from './hooks/useRealtimeIncidents';
+import { useRealtimeUnits } from './hooks/useRealtimeUnits';
+import { useRealtimeLogs } from './hooks/useRealtimeLogs';
 
 // Types
 interface Incident {
@@ -31,33 +34,26 @@ interface Unit {
 }
 
 function App() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
+  // Real-time data from Supabase
+  const { incidents } = useRealtimeIncidents();
+  const { units } = useRealtimeUnits();
+  const { logs } = useRealtimeLogs();
+  
   const [currentView, setCurrentView] = useState<'dashboard' | 'analytics' | 'reports' | 'alerts' | 'settings'>('dashboard');
   const [zoomTarget, setZoomTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
 
+  // Manual refresh function (kept for backward compatibility)
   const fetchData = async () => {
-    try {
-      const [incidentsRes, unitsRes, logsRes] = await Promise.all([
-        axios.get('http://localhost:8000/api/incidents'),
-        axios.get('http://localhost:8000/api/units'),
-        axios.get('http://localhost:8000/api/logs')
-      ]);
-
-      setIncidents(incidentsRes.data);
-      setUnits(unitsRes.data);
-      setLogs(logsRes.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
+    // Real-time hooks handle data fetching automatically
+    // This function is kept for manual refresh if needed
+    console.log('Data is now updated in real-time via WebSocket subscriptions');
   };
 
   const dispatchAllUnits = async () => {
     try {
       await axios.post('http://localhost:8000/api/dispatch');
       toast.success('🚔 All units dispatched to nearest incidents!');
-      fetchData();
+      // No need to call fetchData - real-time subscription will update automatically
     } catch (error) {
       console.error("Error dispatching units:", error);
       toast.error('❌ Failed to dispatch units');
@@ -76,7 +72,7 @@ function App() {
           fontSize: '16px',
         },
       });
-      fetchData();
+      // No need to call fetchData - real-time subscription will update automatically
     } catch (error) {
       console.error("Error activating emergency:", error);
     }
@@ -104,10 +100,8 @@ function App() {
     { key: '5', action: () => setCurrentView('settings'), description: 'Go to Settings' },
   ]);
 
-  useEffect(() => {
-    const interval = setInterval(fetchData, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // Polling removed - now using Supabase real-time subscriptions!
+  // Data updates automatically via WebSocket connections
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans selection:bg-cyan-200 selection:text-cyan-900 overflow-hidden">
