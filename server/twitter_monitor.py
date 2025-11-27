@@ -20,6 +20,7 @@ supabase = create_client(
 # Twitter API credentials
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
 TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
+TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")  # Required for API v2
 
 # Keywords to monitor
 SEARCH_QUERY = "(robbery OR theft OR mugging OR carjacking OR assault) (Nairobi OR CBD OR Westlands OR Kibera OR Eastleigh) -is:retweet lang:en"
@@ -133,24 +134,29 @@ def create_incident_from_tweet(tweet_data: dict, tweet_text: str):
 async def monitor_twitter():
     """Monitor Twitter for security incidents"""
     try:
-        # Initialize Twitter client
-        client = tweepy.Client(
-            consumer_key=TWITTER_API_KEY,
-            consumer_secret=TWITTER_API_SECRET
-        )
+        # Check if Bearer token is configured
+        if not TWITTER_BEARER_TOKEN:
+            print("⚠️ Twitter Bearer Token not configured. Skipping Twitter monitoring.")
+            print("💡 To enable: Add TWITTER_BEARER_TOKEN to .env file")
+            return
+        
+        # Initialize Twitter client with Bearer token
+        client = tweepy.Client(bearer_token=TWITTER_BEARER_TOKEN)
         
         print("🐦 Starting Twitter monitoring...")
         print(f"📝 Search query: {SEARCH_QUERY}")
         
         # Search for recent tweets
+        # Twitter API v2 limits: 450 requests per 15 minutes for search
+        # We poll every 15 minutes = 96 requests/day (well within limit)
         tweets = client.search_recent_tweets(
             query=SEARCH_QUERY,
-            max_results=10,
+            max_results=10,  # Limit to 10 tweets per request (reduces noise)
             tweet_fields=['created_at', 'author_id']
         )
         
         if not tweets.data:
-            print("No tweets found")
+            print("No new tweets found")
             return
         
         print(f"Found {len(tweets.data)} tweets")
@@ -177,13 +183,24 @@ async def monitor_twitter():
         if len(processed_tweets) > 1000:
             processed_tweets.clear()
             
+    except tweepy.TooManyRequests as e:
+        print(f"⚠️ Twitter rate limit exceeded. Waiting before retry...")
+        print(f"💡 This is normal - Twitter limits: 450 requests/15min")
+        # Rate limit hit - will retry on next scheduled check
+    except tweepy.Unauthorized as e:
+        print(f"⚠️ Twitter authentication failed. Check your Bearer Token.")
     except Exception as e:
         print(f"Error monitoring Twitter: {e}")
 
 async def start_twitter_monitoring():
-    """Start Twitter monitoring loop (runs every 30 minutes)"""
+    """Start Twitter monitoring loop (runs every 15 minutes)"""
     print("🚀 Twitter monitoring service started")
-    print("⏰ Polling every 30 minutes to respect rate limits")
+    print("⏰ Smart rate limiting: Polling every 15 minutes")
+    print("📊 Rate limit: 450 requests/15min | Our usage: ~96 requests/day")
+    
+    # Wait 60 seconds before first check to avoid rate limit on startup
+    print("⏳ Waiting 60 seconds before first Twitter check (prevents rate limit)...")
+    await asyncio.sleep(60)
     
     while True:
         try:
@@ -191,8 +208,10 @@ async def start_twitter_monitoring():
         except Exception as e:
             print(f"Error in monitoring loop: {e}")
         
-        # Wait 30 minutes before next check
-        await asyncio.sleep(1800)  # 1800 seconds = 30 minutes
+        # Wait 15 minutes before next check
+        # Twitter API v2 rate limit window is 15 minutes
+        # This ensures we stay well under the 450 requests/15min limit
+        await asyncio.sleep(900)  # 900 seconds = 15 minutes
 
 if __name__ == "__main__":
     # Test the monitor

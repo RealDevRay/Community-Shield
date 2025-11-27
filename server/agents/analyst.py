@@ -1,15 +1,19 @@
 import os
 import json
-from groq import Groq
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Groq Client
-# Note: Ensure GROQ_API_KEY is set in .env
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY", "gsk_placeholder_key_replace_me"),
+# Initialize Together AI Client (OpenAI-compatible)
+# Using cost-efficient Llama 3.1 8B Instruct (~$0.20 per 1M tokens)
+client = OpenAI(
+    api_key=os.environ.get("TOGETHER_API_KEY", ""),
+    base_url="https://api.together.xyz/v1"
 )
+
+# Model selection: Llama 3.1 8B for cost efficiency
+MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
 
 SYSTEM_PROMPT = """
 You are an expert Police Dispatch Analyst. 
@@ -59,7 +63,7 @@ def analyze_report(raw_text: str):
                     "content": raw_text,
                 }
             ],
-            model="llama-3.3-70b-versatile",
+            model=MODEL,  # Using cost-efficient Llama 3.1 8B
             temperature=0,
             response_format={"type": "json_object"},
         )

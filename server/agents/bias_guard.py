@@ -1,15 +1,19 @@
 import os
 import json
 from typing import Dict, List
-from groq import Groq
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Initialize Groq Client
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY", "gsk_placeholder_key_replace_me"),
+# Initialize Together AI Client
+client = OpenAI(
+    api_key=os.environ.get("TOGETHER_API_KEY", ""),
+    base_url="https://api.together.xyz/v1"
 )
+
+# Using even cheaper model for bias checks (~$0.20 per 1M tokens)
+MODEL = "mistralai/Mistral-7B-Instruct-v0.2"
 
 SYSTEM_PROMPT = """
 You are an expert Civil Rights Oversight AI.
@@ -47,8 +51,8 @@ class BiasGuard:
         Returns the original analysis enriched with bias metadata.
         """
         # Check API Key
-        api_key = os.environ.get("GROQ_API_KEY", "gsk_placeholder_key_replace_me")
-        if api_key == "gsk_placeholder_key_replace_me" or not api_key:
+        api_key = os.environ.get("TOGETHER_API_KEY", "")
+        if not api_key:
             return BiasGuard._fallback_check(analysis)
 
         try:
@@ -71,7 +75,7 @@ class BiasGuard:
                         "content": f"Analyze this report for bias:\n{report_context}",
                     }
                 ],
-                model="llama-3.3-70b-versatile",
+                model=MODEL,  # Using cost-efficient Mistral 7B
                 temperature=0,
                 response_format={"type": "json_object"},
             )

@@ -52,27 +52,16 @@ def log(message: str, log_type: str = "info", incident_id: str = None, unit_id: 
 # Twitter monitoring task
 twitter_task = None
 
-@app.on_event("startup")
-async def startup_event():
-    """Start background tasks on app startup"""
-    global twitter_task
-    
-    # Start Twitter monitoring in background
-    print("🚀 Starting Twitter monitoring service...")
-    twitter_task = asyncio.create_task(start_twitter_monitoring_loop())
-    
-    log("🐦 Twitter monitoring service started", "system")
-
 async def start_twitter_monitoring_loop():
-    """Run Twitter monitoring every 30 minutes"""
+    """Run Twitter monitoring every 15 minutes (smart rate limiting)"""
     while True:
         try:
             await monitor_twitter()
         except Exception as e:
             print(f"Error in Twitter monitoring: {e}")
         
-        # Wait 30 minutes
-        await asyncio.sleep(1800)
+        # Wait 15 minutes (optimal for Twitter API v2 rate limits)
+        await asyncio.sleep(900)
 
 async def simulation_loop():
     """Background task that simulates the agent loop."""
@@ -153,11 +142,23 @@ async def simulation_loop():
             else:
                 log("🧠 Analyst: Could not determine location. Discarding.", log_type="analysis")
         
-        await asyncio.sleep(5) # Wait before next cycle
+        await asyncio.sleep(30) # Wait 30 seconds before next cycle (conserves Groq tokens)
 
 @app.on_event("startup")
 async def startup_event():
+    """Start background tasks on app startup"""
+    global twitter_task
+    
+    # Start Twitter monitoring in background
+    print("🚀 Starting Twitter monitoring service...")
+    twitter_task = asyncio.create_task(start_twitter_monitoring_loop())
+    
+    # Start simulation loop
+    print("🚀 Starting incident simulation loop...")
     asyncio.create_task(simulation_loop())
+    
+    log("🐦 Twitter monitoring service started", "info")
+    log("🎯 Incident simulation loop started", "info")
 
 @app.get("/")
 def read_root():
@@ -245,6 +246,19 @@ def get_hotspots():
     result = supabase.table("hotspots").select("*").order("risk_score", desc=True).execute()
     return result.data
 
+@app.get("/api/bias-checks")
+def get_bias_checks():
+    """Get bias check alerts from Supabase"""
+    try:
+        # Get bias checks with incident details
+        result = supabase.table("bias_checks").select(
+            "*, incidents(type, location, severity, created_at)"
+        ).order("created_at", desc=True).limit(50).execute()
+        return result.data
+    except Exception as e:
+        print(f"Error fetching bias checks: {e}")
+        return []
+
 @app.post("/api/dispatch")
 def dispatch_all():
     """Emergency: Dispatch all available units"""
@@ -255,7 +269,7 @@ def dispatch_all():
 @app.post("/api/emergency")
 def activate_emergency():
     """Activate emergency protocol"""
-    log("🚨 EMERGENCY PROTOCOL ACTIVATED", "emergency")
+    log("🚨 EMERGENCY PROTOCOL ACTIVATED", "error")
     return {"status": "emergency_activated"}
 
 @app.post("/api/map/zoom/{location}")

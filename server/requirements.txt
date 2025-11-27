@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-groq
+openai
 pydantic
 python-dotenv
 supabase
+tweepy
